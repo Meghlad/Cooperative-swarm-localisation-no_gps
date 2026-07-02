@@ -1,8 +1,19 @@
+# Virtual environments
 .venv/
+.venv-sim/
+
+# Python
 __pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.DS_Store
-.pytest_cache/
-.ipynb_checkpoints/
+*.pyc
+
+# VS Code
+.vscode/
+
+# Temporary files
+tempCodeRunnerFile.py
+
+# Data
+*.npy
+
+# Simulator
+gym-pybullet-drones/ls 
