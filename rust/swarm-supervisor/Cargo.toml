@@ -1,0 +1,19 @@
+[package]
+name = "swarm-supervisor"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "swarm_supervisor"
+path = "src/lib.rs"
+
+[[bin]]
+name = "swarm-supervisor"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+mavlink = { version = "0.15", default-features = false, features = ["common", "std"] }
+anyhow = "1"

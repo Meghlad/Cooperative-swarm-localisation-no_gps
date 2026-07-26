@@ -14,7 +14,26 @@ tempCodeRunnerFile.py
 
 # Data
 *.npy
+*.npz
+
+# Rust build artifacts
+rust/target/
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+ros2_ws/src/ros2_rust/
+
+# Layer 2 generated dataset (1440 rendered camera frames + detector + bearings)
+frames/
+detector.onnx
+bearings.jsonl
+layer1_*.csv
+
+# macOS
+.DS_Store
 
 # Simulator
-gym-pybullet-drones/ls 
+gym-pybullet-drones/ls
 gym-pybullet-drones/
+
+116475102+Meghlad@users.noreply.github.com.

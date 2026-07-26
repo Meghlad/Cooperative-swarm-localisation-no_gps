@@ -23,3 +23,10 @@ scs==3.2.11
 setuptools==82.0.1
 six==1.17.0
 sparsediffpy==0.3.0
+
+# --- added for Layers 1-3 ---
+onnx==1.22.0            # Layer 2: build the ONNX blob detector
+onnxruntime==1.27.0     # Layer 2: dylib the Rust perception node loads (ORT_DYLIB_PATH)
+anthropic==0.120.0      # Layer 3: claude-opus-4-8 mission planner (offline fallback if no key)
+# pymavlink already present in the estimator venv (close_the_loop.py) — used by layer1_python_sender.py
+# Rust toolchain (Layers 1-3 binaries + ROS nodes): install via rustup; see docs/OVERVIEW.md

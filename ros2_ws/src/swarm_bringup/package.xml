@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>swarm_bringup</name>
+  <version>0.1.0</version>
+  <description>
+    Launch files and Python (rclpy) bridge nodes that feed the ROS 2 swarm
+    graph from the existing Layer-2 estimator and Layer-3 planner: publishes
+    /swarm_estimate and /mission_plan, echoes /plan_decision.
+  </description>
+  <maintainer email="meghlad06@gmail.com">Meghlad</maintainer>
+  <license>MIT</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>swarm_msgs</exec_depend>
+  <exec_depend>swarm_supervisor_node</exec_depend>
+  <exec_depend>swarm_perception_node</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

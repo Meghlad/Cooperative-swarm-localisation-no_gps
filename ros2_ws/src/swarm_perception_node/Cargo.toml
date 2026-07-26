@@ -1,0 +1,17 @@
+[package]
+name = "swarm_perception_node"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "perception_node"
+path = "src/main.rs"
+
+[dependencies]
+rclrs = "*"
+swarm_msgs = "*"
+sensor_msgs = "*"
+# Reuse the exact detector→bearing math from the standalone perception crate.
+swarm-perception = { path = "../../../rust/swarm-perception" }
+ort = { version = "2.0.0-rc.12", features = ["load-dynamic"] }
+anyhow = "1"

@@ -1,0 +1,24 @@
+[package]
+name = "swarm-perception"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "swarm_perception"
+path = "src/lib.rs"
+
+[[bin]]
+name = "swarm-perception"
+path = "src/main.rs"
+
+[dependencies]
+# load-dynamic: the ONNX Runtime dylib is loaded at runtime (ORT_DYLIB_PATH).
+# On this dev box that's the venv's pip-installed onnxruntime; on a Jetson it
+# would be the JetPack build. The static-link path needs a macOS >= 14.4 SDK
+# (CoreML EP symbols), which this machine's CommandLineTools don't have.
+ort = { version = "2.0.0-rc.12", features = ["load-dynamic"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"

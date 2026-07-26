@@ -13,13 +13,14 @@ This project builds a swarm-localization estimator from first principles — fro
 1. [The Big Idea](#-the-big-idea)
 2. [What We've Built (Part A — the estimator)](#-part-a--the-estimator-days-18)
 3. [Closing the Loop (Part B — the autopilot)](#-part-b--closing-the-loop-into-ardupilot)
-4. [System Architecture](#-system-architecture)
-5. [Why the Version Matters](#-why-the-version-matters-)
-6. [How QGroundControl + MAVLink Fit Together](#-how-qgroundcontrol--mavlink-fit-together)
-7. [Why 12 Drones Need 12 Simulators](#-why-12-drones-need-12-simulators)
-8. [The Debugging Journey (hard-won knowledge)](#-the-debugging-journey--every-wall-we-hit)
-9. [Setup & Run](#-setup--run)
-10. [Future Scope](#-future-scope)
+4. [Part C — Four Production Layers (vision · Rust · ROS 2 · planner)](#-part-c--from-estimator-to-system-four-production-layers)
+5. [System Architecture](#-system-architecture)
+6. [Why the Version Matters](#-why-the-version-matters-)
+7. [How QGroundControl + MAVLink Fit Together](#-how-qgroundcontrol--mavlink-fit-together)
+8. [Why 12 Drones Need 12 Simulators](#-why-12-drones-need-12-simulators)
+9. [The Debugging Journey (hard-won knowledge)](#-the-debugging-journey--every-wall-we-hit)
+10. [Setup & Run](#-setup--run)
+11. [Future Scope](#-future-scope)
 
 ---
 
@@ -70,6 +71,44 @@ your iSAM2 estimator  ──VISION_POSITION_ESTIMATE──▶  EKF3 (external na
 ```
 
 > ⚖️ **Scope honesty:** the estimator localizes the *whole* swarm; one SITL instance is *one* aircraft. So we feed **drone 0's** estimate in as *its* position. No pretending one SITL is twelve drones. ([See why below.](#-why-12-drones-need-12-simulators))
+
+---
+
+## 🚀 Part C — From Estimator to System: Four Production Layers
+
+Parts A–B build and fly the estimator. Part C makes it a *system*: it makes the estimate **trustworthy** (vision), the transport **real-time** (Rust), the interface **operable** (a language planner), and the whole thing **ROS-native**. Each layer has a full walkthrough in **[`docs/`](docs/)** — start with **[docs/OVERVIEW.md](docs/OVERVIEW.md)**.
+
+**The through-line:** *estimation quality and safety are the same problem.* The degraded range-only estimator reports σ = 4 cm while actually erring 28 cm — **a floppy graph makes the covariance a liar.** Layer 2's vision factors make it honest, and Layer 3's safety supervisor gates every plan on that same covariance. The guarantee at the top of the stack exists only because of the sensor fusion at the bottom.
+
+| Layer | What it adds | Headline result (measured) | Code | Tutorial |
+|-------|--------------|----------------------------|------|----------|
+| 🎥 **L2 · Vision bearings** | A camera whose bearing factors constrain exactly the DOF ranges leave ambiguous (flexes + mirror flips). Bearings are the `perp()` of the range rigidity row — orthogonal, and *linear* in position, so they enter the SDP with no relaxation gap. | At the marginal radius **~16 detections/frame take a 33%-rigid graph to 100%-rigid, RMSE 0.26 m → 0.05 m**. Full pixels→ONNX(Rust)→association→iSAM2 pipeline: **RMSE 0.20 m → 0.076 m** on degraded radio. Detector: recall 94%, precision 96%, bearing RMS 0.15°. | [`layer2_*.py`](.), [`rust/swarm-perception`](rust/swarm-perception) | [LAYER2](docs/LAYER2_TUTORIAL.md) |
+| ⚙️ **L1 · Rust transport** | `swarm-link`: splits estimation from transport (the README's own spec), one ~20 Hz sender per vehicle, tokio tasks + bounded `watch` channels. The borrow checker *mechanically enforces* estimator-owns-state / senders-borrow-snapshots. | At **N=12, estimate-to-wire p99 = 336 µs (Rust) vs 1,988 µs (Python) — ~6×**. Python's median grows 4.8× from 1→12 vehicles (the GIL); Rust stays flat. | [`rust/swarm-link`](rust/swarm-link), [`layer1_bench.py`](layer1_bench.py) | [LAYER1](docs/LAYER1_TUTORIAL.md) |
+| 🤖 **ROS 2 · rclrs** | The Rust layers as ROS 2 nodes. Bearings, pose estimates, and plan-accept/reject events become **topics** — reusing the exact same Rust crates the CLIs and unit tests use, not a forked Python demo. | `ros2 launch` runs the safety loop end-to-end; detector math is single-sourced in `swarm-perception`'s lib. | [`ros2_ws/`](ros2_ws) | [ROS2](docs/ROS2_TUTORIAL.md) |
+| 🧭 **L3 · Mission planner** | A **language-conditioned** planner (`claude-opus-4-8`, **constrained decoding** — no free-text channel to the aircraft) under a Rust **safety supervisor that assumes the model is wrong**: rejects any plan unless geofence + spacing + marginal-covariance + freshness all pass. | ~400 lines of Rust, **no model in it**, **11 unit tests** incl. the hallucinated-hillside rejection. A bad waypoint produces **zero** MAVLink packets. | [`layer3_vlm_planner.py`](layer3_vlm_planner.py), [`rust/swarm-supervisor`](rust/swarm-supervisor) | [LAYER3](docs/LAYER3_TUTORIAL.md) |
+
+> 🧠 **Framing note:** L3 is a *language-conditioned mission planner with a safety supervisor* — **not a VLA**. The action space is waypoints; the low-level policy is a flight controller better than anything we'd train; and the open problem in a GPS-denied swarm isn't motor control, it's whether the estimate is trustworthy enough to act on.
+
+**Build & test the whole thing:**
+
+```bash
+# Rust: 3 static binaries + 2 libs, 13 unit tests (11 supervisor + 2 perception)
+cargo build --release --manifest-path rust/Cargo.toml
+cargo test  --release --manifest-path rust/Cargo.toml
+
+# L2 science + real ONNX perception pipeline
+python layer2_bearing_phase_diagram.py     # the deliverable plot
+python layer2_make_dataset.py              # 1440 camera frames + detector.onnx
+ORT_DYLIB_PATH=$PWD/.venv/lib/python3.12/site-packages/onnxruntime/capi/libonnxruntime.1.27.0.dylib \
+  ./rust/target/release/swarm-perception --frames frames --model detector.onnx --out bearings.jsonl
+python layer2_perception_closeloop.py
+
+# L1 latency benchmark  ·  L3 planner+supervisor  ·  ROS 2 demo
+python layer1_bench.py
+python layer3_vlm_planner.py "form a tight line along the north edge"
+docker build -f ros2_ws/Dockerfile -t coop-swarm-ros . && \
+  docker run --rm -it coop-swarm-ros ros2 launch swarm_bringup supervisor_demo.launch.py
+```
 
 ---
 
@@ -247,17 +286,35 @@ Watch for the payoff line: **`EKF3 IMU0 is using external nav data`** — that's
 
 ### 📂 Repo Map
 
-| File | Role |
-|------|------|
-| `day1..day8_*.py` | The estimator, one day per stage ([Part A](#-part-a--the-estimator-days-18)) |
-| `close_the_loop.py` | 🏁 The finale — iSAM2 → ArduCopter external nav |
-| `feed_position.py` | Minimal external-nav injector (hover-in-place teaching version) |
-| `hello_drone.py` | Simplest MAVLink telemetry listener (start here) |
-| `animate_swarm.py` | Renders the flight animation GIF |
-| `trajectory.npy` | Real Crazyflie flight path (from `gym-pybullet-drones`) |
-| `gym-pybullet-drones/` | Physics sim; `export_trajectory.py` generates the trajectory |
-| `check.py` | GTSAM sanity check |
+|        File               |                    Role                                                      |
+|---------------------------|------------------------------------------------------------------------------|
+| `day1..day8_*.py`         | The estimator, one day per stage ([Part A](#-part-a--the-estimator-days-18)) |
+| `close_the_loop.py`       | 🏁 The finale — iSAM2 → ArduCopter external nav |
+| `feed_position.py`        | Minimal external-nav injector (hover-in-place teaching version) |
+| `hello_drone.py`          | Simplest MAVLink telemetry listener (start here) |
+| `animate_swarm.py`        | Renders the flight animation GIF |
+| `trajectory.npy`          | Real Crazyflie flight path (from `gym-pybullet-drones`) |
+| `gym-pybullet-drones/`    | Physics sim; `export_trajectory.py` generates the trajectory |
+| `check.py`                | GTSAM sanity check |
+| **Part C — the four production layers** | ([overview](docs/OVERVIEW.md)) |
+| `docs/`                   | 🎥 One tutorial per layer + `OVERVIEW.md` |
+| `layer2_bearing_phase_diagram.py` | L2: mixed range+bearing rigidity + SDP + the deliverable plot |
+| `layer2_isam2_bearing.py` | L2: bearing factors in the live iSAM2 estimator (+ marginal covariance) |
+| `layer2_make_dataset.py`  | L2: renders 1440 onboard camera frames + builds `detector.onnx` |
+| `layer2_perception_closeloop.py` | L2: ONNX bearings → track-based association → iSAM2 |
+| `layer1_bench.py` / `layer1_python_sender.py` | L1: estimate-to-wire latency benchmark (Python twin of swarm-link) |
+| `layer3_vlm_planner.py`   | L3: `claude-opus-4-8` mission planner (constrained decoding) → supervisor |
+| `rust/swarm-perception/`  | L2: ONNX detector → world-frame bearings (`ort`) |
+| `rust/swarm-link/`        | L1: tokio/watch transport, one 20 Hz sender per vehicle |
+| `rust/swarm-supervisor/`  | L3: deterministic safety gate (lib + bin + 11 tests) |
+| `ros2_ws/`                | 🤖 ROS 2 (rclrs) nodes wrapping the Rust layers + Docker build |
 
 ---
 
 > _"The drone won't fly because it has no position estimate it trusts. That is the exact hole this estimator exists to fill. Today the crutch is fake GPS. The whole point of the project is to **become the thing that satisfies that check with no GPS at all** — and now it does."_ 🛰️
+
+
+
+### Tools/autotest/sim_vehicle.py -v ArduCopter --console --map --out 127.0.0.1:14551
+##       use command -> 
+###         cd ~/ardupilot 

@@ -1,0 +1,18 @@
+[package]
+name = "swarm_supervisor_node"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "supervisor_node"
+path = "src/main.rs"
+
+[dependencies]
+# The ROS 2 Rust client library. Pinned to a Jazzy-era release; the Dockerfile
+# builds ros2-rust from source so this resolves against the local rclrs.
+rclrs = "*"
+# The generated message crate (colcon/cargo-ament wires this in at build time).
+swarm_msgs = "*"
+# THE POINT: the ROS node reuses the exact same validation library the
+# standalone binary and the tests use. No re-implementation, no fork.
+swarm-supervisor = { path = "../../../rust/swarm-supervisor" }

@@ -1,0 +1,6 @@
+[workspace]
+resolver = "2"
+members = ["swarm-perception", "swarm-link", "swarm-supervisor"]
+
+[profile.release]
+lto = "thin"

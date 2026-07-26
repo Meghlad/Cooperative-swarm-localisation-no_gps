@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>swarm_supervisor_node</name>
+  <version>0.1.0</version>
+  <description>
+    ROS 2 (rclrs) node wrapping the deterministic safety supervisor. Subscribes
+    to /mission_plan and /swarm_estimate, publishes /plan_decision. The
+    accept/reject verdict is a first-class topic; only an accepted plan is
+    forwarded as setpoints. Validation is the same swarm-supervisor crate the
+    standalone binary and unit tests use.
+  </description>
+  <maintainer email="meghlad06@gmail.com">Meghlad</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cargo</buildtool_depend>
+
+  <depend>rclrs</depend>
+  <depend>swarm_msgs</depend>
+
+  <export>
+    <build_type>ament_cargo</build_type>
+  </export>
+</package>
