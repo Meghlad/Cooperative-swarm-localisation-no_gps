@@ -36,14 +36,26 @@ COPY ros2_ws/src/    ./ros2_ws/src/
 COPY layer3_vlm_planner.py detector.onnx trajectory.npy ./
 COPY layer2_isam2_results.npz ./
 # onnxruntime dylib for the perception node's `load-dynamic` ort backend
-RUN pip download --break-system-packages onnxruntime -d /tmp/ort --no-deps \
+RUN pip download onnxruntime -d /tmp/ort --no-deps \
     && cd /tmp/ort && python3 -c "import zipfile,glob; zipfile.ZipFile(glob.glob('*.whl')[0]).extractall('x')" \
-    && cp /tmp/ort/x/onnxruntime/capi/libonnxruntime*.so* /usr/local/lib/ || true
+    && cp /tmp/ort/x/onnxruntime/capi/libonnxruntime*.so* /usr/local/lib/ \
+    && ln -sf /usr/local/lib/libonnxruntime.so.* /usr/local/lib/libonnxruntime.so || true
 ENV ORT_DYLIB_PATH=/usr/local/lib/libonnxruntime.so
 
 # --- build the ROS 2 workspace (messages + rclrs nodes + rclpy bringup) ---
+# TWO PASSES on purpose. colcon's merged setup util omits our custom message
+# package (swarm_msgs) from `install/setup.bash`, so a single pass leaves
+# install/swarm_msgs OFF AMENT_PREFIX_PATH and colcon-ros-cargo can't discover
+# the generated swarm_msgs Rust crate ("no matching package named swarm_msgs").
+# Pass 1 builds the messages + rclrs; then we force EVERY built prefix onto
+# AMENT_PREFIX_PATH so the Rust bindings are discoverable; pass 2 builds the
+# rclrs nodes and the rclpy bringup.
 RUN source /opt/ros/jazzy/setup.bash \
     && cd ros2_ws \
+    && colcon build --packages-up-to swarm_msgs rclrs \
+       --cmake-args -DCMAKE_BUILD_TYPE=Release \
+    && source install/setup.bash \
+    && export AMENT_PREFIX_PATH="$(ls -d $PWD/install/*/ | sed 's:/$::' | tr '\n' ':')$AMENT_PREFIX_PATH" \
     && colcon build --packages-up-to swarm_bringup swarm_supervisor_node swarm_perception_node \
        --cmake-args -DCMAKE_BUILD_TYPE=Release
 

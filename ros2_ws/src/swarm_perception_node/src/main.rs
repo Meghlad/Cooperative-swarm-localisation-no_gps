@@ -31,25 +31,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut executor = context.create_basic_executor();
     let node = executor.create_node("swarm_perception")?;
 
-    // ---- per-vehicle parameters ----
-    let observer = node
-        .declare_parameter("observer", 0i64)
-        .mandatory()?;
-    let fx = node.declare_parameter("fx", 160.0f64).mandatory()?;
-    let cx = node.declare_parameter("cx", 160.0f64).mandatory()?;
-    let heading = node.declare_parameter("heading", 0.0f64).mandatory()?;
-    let thresh = node.declare_parameter("thresh", 0.05f64).mandatory()?;
-    let nms = node.declare_parameter("nms_radius", 6.0f64).mandatory()?;
+    // ---- per-vehicle parameters (rclrs builder: declare -> default -> mandatory) ----
+    let observer = node.declare_parameter("observer").default(0i64).mandatory()?;
+    let fx = node.declare_parameter("fx").default(160.0f64).mandatory()?;
+    let cx = node.declare_parameter("cx").default(160.0f64).mandatory()?;
+    let heading = node.declare_parameter("heading").default(0.0f64).mandatory()?;
+    let thresh = node.declare_parameter("thresh").default(0.05f64).mandatory()?;
+    let nms = node.declare_parameter("nms_radius").default(6.0f64).mandatory()?;
     let model_path = node
-        .declare_parameter("model_path", "detector.onnx".to_string())
+        .declare_parameter::<Arc<str>>("model_path")
+        .default(Arc::from("detector.onnx"))
         .mandatory()?;
+
+    // Snapshot the parameter values into plain Copy locals so the subscription
+    // closure captures values, not the parameter handles.
+    let observer_id = observer.get() as u32;
+    let (fx_v, cx_v, heading_v) = (fx.get(), cx.get(), heading.get());
+    let (thresh_v, nms_v) = (thresh.get() as f32, nms.get() as f32);
 
     // ---- ONNX session (loaded once, reused per frame) ----
     let session = Arc::new(Mutex::new(ort_try!(ort_try!(ort_try!(
         ort::session::Session::builder()
     )
     .with_intra_threads(1))
-    .commit_from_file(model_path.get()))));
+    .commit_from_file(&*model_path.get()))));
 
     let bearing_pub = node.create_publisher::<swarm_msgs::msg::BearingObservation>("bearings")?;
 
@@ -72,17 +77,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let (_, resp) = ort_try!(outputs["response"].try_extract_tensor::<f32>());
                 let resp: &[f32] = resp;
 
-                for (px, py, conf) in
-                    find_peaks(resp, W, H, thresh.get() as f32, nms.get() as f32)
-                {
+                for (px, py, conf) in find_peaks(resp, W, H, thresh_v, nms_v) {
                     let (u, v) = centroid(resp, W, H, px, py);
                     let mut obs = swarm_msgs::msg::BearingObservation::default();
-                    obs.observer = observer.get() as u32;
+                    obs.observer = observer_id;
                     obs.u = u;
                     obs.v = v;
                     obs.confidence = conf;
-                    obs.bearing_world =
-                        column_to_world_bearing(u, cx.get(), fx.get(), heading.get());
+                    obs.bearing_world = column_to_world_bearing(u, cx_v, fx_v, heading_v);
                     let _ = bearing_pub.publish(obs);
                 }
                 Ok(())
@@ -96,7 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     log_info!(
         node.logger(),
         "swarm_perception up (observer {}): /camera/image_raw -> /bearings",
-        observer.get()
+        observer_id
     );
     executor.spin(SpinOptions::default());
     Ok(())

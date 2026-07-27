@@ -47,12 +47,11 @@ The accept/reject decision being a **topic** is the point: any node — a logger
 
 ---
 
-## 3. Build & run
+## 3. Build & run — verified end-to-end
 
-The Docker daemon was down on the dev box, so the ROS workspace ships as a **reproducible Docker build** (the native Rust libraries it wraps *are* built and tested — 13 tests green). On any machine with Docker or a ROS 2 Jazzy install:
+The image **builds and the demo runs** (ros:jazzy + Rust + ros2-rust, ~5 GB). From the repo root (build context = repo root; the image needs `rust/` and the Python layers):
 
 ```bash
-# from the repo root (build context = repo root; the image needs rust/ and the Python layers)
 docker build -f ros2_ws/Dockerfile -t coop-swarm-ros .
 
 docker run --rm -it coop-swarm-ros \
@@ -60,25 +59,40 @@ docker run --rm -it coop-swarm-ros \
        instruction:="form a tight circle in the center"
 ```
 
-Expected trace:
+**Actual verified trace** — the three nodes come up, the planner publishes a 12-assignment plan, the estimator replays real frames, and the supervisor validates each against the *current* frame:
+
 ```
 [swarm_supervisor]   swarm_supervisor up: /mission_plan + /swarm_estimate -> /plan_decision
+[plan_publisher]     planner source: offline-geometric; publishing plan 'offline-…' with 12 assignments
 [estimate_publisher] replaying 120 frames of r055 estimate -> /swarm_estimate
-[plan_publisher]     planner source: offline-geometric; publishing plan '...' with 12 assignments
-[swarm_supervisor]   plan '...' ACCEPTED
-[plan_publisher]     /plan_decision: plan '...' ACCEPTED
+[swarm_supervisor]   plan 'offline-…' ACCEPTED
+[plan_publisher]     /plan_decision: plan 'offline-…' ACCEPTED
+[swarm_supervisor]   plan 'offline-…' REJECTED (2 violations) — no setpoints emitted
+[plan_publisher]     /plan_decision: … REJECTED  violations=['CovarianceTooHigh { vehicle: 1, trace: 0.00405, max: 0.004 }', 'CovarianceTooHigh { vehicle: 2, trace: 0.00439, max: 0.004 }']
 ```
 
-Point it at a degraded world and a bad instruction to watch the gate fire on a topic:
+**The covariance gate fires live**, mid-run: as the replayed estimate advances frame-to-frame, some frames carry a marginal covariance just above the 0.004 threshold on a couple of vehicles, and the supervisor refuses to command exactly those — the Layer 2 → Layer 3 through-line, on a topic.
+
+Point it at a colliding formation to watch the spacing gate fire too:
 ```bash
-ros2 launch swarm_bringup supervisor_demo.launch.py condition:=r035 \
-     instruction:="stack everyone on one point"
-# → /plan_decision: plan '...' REJECTED  violations=['SpacingTooClose {...}']
+docker run --rm coop-swarm-ros \
+  ros2 launch swarm_bringup supervisor_demo.launch.py instruction:="stack everyone on one tiny point"
+# → REJECTED  violations=['SpacingTooClose { a: 0, b: 1, dist: 0.0196, min: 0.08 }', ...]
 ```
 
-The Dockerfile clones `ros2-rust` into the workspace, imports the `ros2_rust_jazzy.repos`, drops the onnxruntime `.so` where the perception node's `load-dynamic` ort backend finds it (`ORT_DYLIB_PATH`), and `colcon build`s everything — the same `load-dynamic` pattern that would point at the JetPack onnxruntime on a Jetson.
+The Dockerfile clones `ros2-rust` into the workspace, imports the jazzy `.repos`, drops the onnxruntime `.so` where the perception node's `load-dynamic` ort backend finds it (`ORT_DYLIB_PATH`) — the same pattern that would point at the JetPack onnxruntime on a Jetson — and `colcon build`s everything.
 
-### Native half (buildable right now, no ROS)
+### Two build/run gotchas worth knowing (the debugging journey)
+
+Getting a custom-message ROS package to link into a Rust node surfaced two real ros2-rust/colcon issues — both fixed in the Dockerfile and entrypoint:
+
+| 🧱 Symptom | 🔍 Root cause | ✅ Fix |
+|-----------|--------------|--------|
+| `cargo: no matching package named 'swarm_msgs' found` when building the Rust nodes | colcon-ros-cargo discovers a message's generated Rust crate by scanning `AMENT_PREFIX_PATH` for `rust_packages` markers — but colcon's merged `install/setup.bash` **silently omits our custom `swarm_msgs`**, so its prefix is never on the path. (`std_msgs`, `rclrs`, etc. resolve fine.) | **Two-pass build**: build `swarm_msgs` + `rclrs` first, then `export AMENT_PREFIX_PATH="$(ls -d install/*/):$AMENT_PREFIX_PATH"` to force every built prefix on, then build the nodes. |
+| Nodes build but launch can't find the `swarm_msgs` typesupport `.so` / Python module | Same omission bites at **runtime** — `ros2 launch` sources the same incomplete `setup.bash`. | `entrypoint.sh` forces every `install/*` prefix onto `AMENT_PREFIX_PATH`, `LD_LIBRARY_PATH`, and `PYTHONPATH`. |
+| `error[E0061]: this method takes 1 argument but 2 were supplied` (×7) in the perception node | rclrs's parameter API is a builder: `declare_parameter("name").default(v).mandatory()?`, not `declare_parameter("name", v)`. | Use the builder; string params are `Arc<str>`. |
+
+### Native half (buildable without ROS)
 
 ```bash
 cargo build  --release --manifest-path rust/Cargo.toml   # 3 binaries + 2 libs
@@ -97,4 +111,5 @@ cargo test   --release --manifest-path rust/Cargo.toml   # 13 tests: 11 supervis
 
 - *"ROS was a hard requirement I didn't have, so I wrapped the Rust layers as rclrs nodes rather than writing a throwaway Python demo — the supervisor node depends on the same crate as the standalone binary and the unit tests, so there's one validation code path, not two."*
 - *"The plan-accept/reject decision is a topic. Anything in the system can see why a plan was refused."*
+- *"In the launch demo the covariance gate fires live — as the estimate replays, a couple of frames drift just over the trust threshold and the supervisor refuses to command exactly those vehicles. That's the Layer 2 → Layer 3 link happening on a ROS topic, not a slide."*
 - *"The perception node and the CLI share `swarm-perception`'s lib functions — I refactored the detector math into a library so the ROS wrapper couldn't drift from the tested version."*

@@ -1,0 +1,19 @@
+# Keep the build context small and free of host-built (macOS) artifacts.
+.git/
+.venv/
+.venv-sim/
+rust/target/
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+ros2_ws/src/ros2_rust/
+frames/
+gym-pybullet-drones/
+__pycache__/
+*.pyc
+*.gif
+# result PNGs and CSVs aren't needed inside the image
+layer1_*.csv
+day*.png
+swarm_*.gif
+.DS_Store

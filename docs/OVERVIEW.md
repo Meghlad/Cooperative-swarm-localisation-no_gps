@@ -8,7 +8,7 @@ Built in the order they deepen the work — not the order they're numbered.
 |---|---|---|---|---|
 | 1 | **Layer 2 — Vision bearings** | a camera whose bearing factors constrain exactly the DOF ranges leave ambiguous; the sensor that makes marginal covariance honest | how many vision detections/frame make a marginal range graph well-conditioned — a measured plot | [LAYER2_TUTORIAL.md](LAYER2_TUTORIAL.md) |
 | 2 | **Layer 1 — Rust transport** | `swarm-link`: estimator/transport split, one 20 Hz sender per vehicle, borrow-checked ownership | estimate-to-wire p50/p99, Python vs Rust, N=1 & N=12 | [LAYER1_TUTORIAL.md](LAYER1_TUTORIAL.md) |
-| 3 | **ROS 2 (rclrs)** | the Rust layers as ROS 2 nodes; bearings, estimates, plan verdicts become topics | `ros2 launch` demo of the safety loop | [ROS2_TUTORIAL.md](ROS2_TUTORIAL.md) |
+| 3 | **ROS 2 (rclrs)** | the Rust layers as ROS 2 nodes; bearings, estimates, plan verdicts become topics | `ros2 launch` demo — **built & verified**: accept + spacing-reject + live covariance-reject on topics | [ROS2_TUTORIAL.md](ROS2_TUTORIAL.md) |
 | 4 | **Layer 3 — Mission planner** | language-conditioned planner (`claude-opus-4-8`, constrained decoding) + a Rust safety supervisor that assumes the model is wrong | a plan that never reaches MAVLink unless geofence + spacing + covariance + freshness all pass | [LAYER3_TUTORIAL.md](LAYER3_TUTORIAL.md) |
 
 ## The through-line
