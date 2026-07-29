@@ -60,20 +60,23 @@ PLAN_SCHEMA = {
     "properties": {
         "plan_id": {"type": "string"},
         "issued_unix_ms": {"type": "integer"},
-        "reasoning": {"type": "string",
+        "reasoning": {"type": "string", "maxLength": 200,
                       "description": "one line: why this formation, for the log"},
         "min_spacing_m": {"type": "number"},
         "assignments": {
             "type": "array",
-            "items": {
+            "maxItems": 64,                    # bound the array: a small local model
+            "items": {                         # under a grammar can otherwise loop
                 "type": "object",
                 "properties": {
                     "vehicle": {"type": "integer"},
                     "waypoint_ne": {
                         "type": "array",
                         "items": {"type": "number"},
-                        # note: length constraints are validated by the supervisor,
-                        # not the schema (structured outputs ignore minItems/maxItems)
+                        "minItems": 2, "maxItems": 2,
+                        # Anthropic structured outputs IGNORE these length bounds
+                        # (the supervisor enforces exactly-2); Ollama's grammar
+                        # ENFORCES them - which also stops the 1B runaway array.
                     },
                 },
                 "required": ["vehicle", "waypoint_ne"],
@@ -83,6 +86,34 @@ PLAN_SCHEMA = {
     },
     "required": ["plan_id", "issued_unix_ms", "reasoning",
                  "min_spacing_m", "assignments"],
+    "additionalProperties": False,
+}
+
+# A stripped schema for small LOCAL models: assignments ONLY, zero free-text
+# fields. llama.cpp's grammar enforces array length bounds but NOT string
+# maxLength, so a 1B model asked for a `reasoning` string runs away and truncates
+# the JSON. Emitting only the numeric assignments keeps it fast and always valid;
+# _sanitize_plan() fills plan_id / issued_unix_ms / reasoning / min_spacing_m.
+# (This is also the tighter safety posture: the local model emits no prose at all.)
+OLLAMA_PLAN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "assignments": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "vehicle": {"type": "integer"},
+                    "waypoint_ne": {"type": "array", "items": {"type": "number"},
+                                    "minItems": 2, "maxItems": 2},
+                },
+                "required": ["vehicle", "waypoint_ne"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["assignments"],
     "additionalProperties": False,
 }
 
@@ -104,7 +135,10 @@ Plan the formation the operator asked for using the vehicles you trust. Put a \
 one-line justification in `reasoning`. Emit only the structured plan."""
 
 
-def build_user_content(instruction, pos, cov, mosaic_b64=None):
+def build_state_text(instruction, pos, cov):
+    """The operator instruction + the swarm's current estimated state, as one
+    prompt string. Shared by every backend (Claude, Ollama) so they all see the
+    identical world."""
     n = len(pos)
     state = {
         "geofence": GEOFENCE,
@@ -118,11 +152,14 @@ def build_user_content(instruction, pos, cov, mosaic_b64=None):
             for i in range(n)
         ],
     }
-    text = (f"Operator instruction: {instruction}\n\n"
+    return (f"Operator instruction: {instruction}\n\n"
             f"Current swarm state (from the GPS-denied estimator):\n"
             f"{json.dumps(state, indent=2)}\n\n"
             f"Emit a formation plan.")
-    content = [{"type": "text", "text": text}]
+
+
+def build_user_content(instruction, pos, cov, mosaic_b64=None):
+    content = [{"type": "text", "text": build_state_text(instruction, pos, cov)}]
     if mosaic_b64:                                    # a downlinked top-down mosaic
         content.insert(0, {"type": "image", "source": {
             "type": "base64", "media_type": "image/png", "data": mosaic_b64}})
@@ -148,6 +185,59 @@ def plan_with_claude(instruction, pos, cov, mosaic_b64=None):
     )
     text = next(b.text for b in resp.content if b.type == "text")
     return json.loads(text), "claude-opus-4-8"
+
+
+# ----------------------------------------------------------------------
+# Local model call: Ollama, constrained to PLAN_SCHEMA via its structured-output
+# `format` field (llama.cpp GBNF grammar). Same guarantee as Claude's constrained
+# decoding - the response is forced to the Plan schema, so no free text can reach
+# the supervisor. Select with env OLLAMA_MODEL (e.g. "llama3.2:1b"); host via
+# OLLAMA_HOST (default http://localhost:11434). No pip dependency - stdlib urllib.
+# ----------------------------------------------------------------------
+def _sanitize_plan(plan, source_tag):
+    """Coerce a (possibly sloppy) small-model plan into the exact shape the Rust
+    supervisor parses: waypoint_ne must be EXACTLY two numbers, or serde rejects
+    the whole plan before it can even be gated. Malformed assignments are dropped
+    (the supervisor still decides on what's left). This keeps a weak local model
+    safe - never a parse crash, always a clean accept/reject."""
+    clean = []
+    for a in (plan.get("assignments") or []):
+        try:
+            wp = a["waypoint_ne"]
+            clean.append({"vehicle": int(a["vehicle"]),
+                          "waypoint_ne": [float(wp[0]), float(wp[1])]})
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue                                  # drop the malformed one
+    return {
+        "plan_id": str(plan.get("plan_id") or f"{source_tag}-{int(time.time())}"),
+        "issued_unix_ms": int(plan.get("issued_unix_ms") or time.time() * 1000),
+        "reasoning": str(plan.get("reasoning", ""))[:200],
+        "min_spacing_m": float(plan.get("min_spacing_m") or MIN_SPACING),
+        "assignments": clean,
+    }
+
+
+def plan_with_ollama(instruction, pos, cov, mosaic_b64=None):
+    import urllib.request
+    model = os.environ["OLLAMA_MODEL"]
+    host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+    user_msg = {"role": "user", "content": build_state_text(instruction, pos, cov)}
+    if mosaic_b64:                                    # needs a vision model (llava/…)
+        user_msg["images"] = [mosaic_b64]
+    payload = {
+        "model": model,
+        "messages": [{"role": "system", "content": SYSTEM}, user_msg],
+        "format": OLLAMA_PLAN_SCHEMA,                 # assignments-only, always valid
+        "stream": False,
+        "options": {"temperature": 0, "num_predict": 1500},   # hard runaway backstop
+    }
+    req = urllib.request.Request(
+        f"{host}/api/chat", data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        body = json.loads(r.read())
+    plan = json.loads(body["message"]["content"])     # `format` -> content IS JSON
+    return _sanitize_plan(plan, f"ollama-{model}"), f"ollama:{model}"
 
 
 # ----------------------------------------------------------------------
@@ -189,7 +279,18 @@ def plan_offline(instruction, pos, cov):
 
 
 def make_plan(instruction, pos, cov, mosaic_b64=None):
-    """Try Claude; fall back to the deterministic planner when unavailable."""
+    """Pick a planner, always fall back to the deterministic one so the pipeline
+    is never dead. Priority: local Ollama (if OLLAMA_MODEL set) -> Claude (if a
+    credential is present) -> offline geometric. Every path emits the identical
+    Plan schema and goes through the same supervisor."""
+    if os.environ.get("OLLAMA_MODEL"):
+        try:
+            return plan_with_ollama(instruction, pos, cov, mosaic_b64)
+        except Exception as e:                        # server down, model error, ...
+            print(f"[planner] Ollama call failed ({type(e).__name__}: {e}); "
+                  f"using offline planner", file=sys.stderr)
+        return plan_offline(instruction, pos, cov)
+
     have_cred = os.environ.get("ANTHROPIC_API_KEY") or os.path.exists(
         os.path.expanduser("~/.config/anthropic"))
     if have_cred:
