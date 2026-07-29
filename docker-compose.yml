@@ -1,0 +1,37 @@
+# docker-compose.yml — one-command build/run of the cooperative-swarm ROS 2 stack.
+#
+# WHY THIS FILE EXISTS. The built image (ROS 2 Jazzy + Rust + rclrs, several GB)
+# is NOT stored in the repo or any registry — it is deliberately deleted to save
+# disk. This file is the "special file" that reconstitutes it from source: after a
+# `git pull`, one command rebuilds the exact image from ros2_ws/Dockerfile. The
+# repo carries only the ~200 KB of build inputs (detector.onnx, trajectory.npy,
+# layer2_isam2_results.npz), never the multi-GB artifact.
+#
+# USAGE (Docker daemon must be running):
+#   docker compose up --build     # first time: BUILDS coop-swarm-ros, runs the demo
+#   docker compose up             # thereafter: reuses the built image, runs the demo
+#   docker compose down           # stop + remove the container
+#   docker compose build          # (re)build the image only, don't run
+#
+# Override the mission instruction without editing this file:
+#   docker compose run --rm swarm \
+#     ros2 launch swarm_bringup supervisor_demo.launch.py \
+#       instruction:="form a tight line along the north edge"
+
+services:
+  swarm:
+    build:
+      context: .                     # repo ROOT: the Rust workspace + Python layers
+      dockerfile: ros2_ws/Dockerfile #   (matches the Dockerfile's COPY paths)
+    image: coop-swarm-ros:latest     # tag the build so it is reused, not rebuilt
+    container_name: coop-swarm-ros
+
+    # "auto-start when the daemon is active": once this container has been created,
+    # Docker (re)starts it automatically whenever the daemon comes up — until you
+    # explicitly `docker compose down`/stop it. The demo below is long-lived (three
+    # ROS 2 nodes that keep spinning), so this does not restart-loop.
+    restart: unless-stopped
+
+    # The end-to-end safety-loop demo the Dockerfile documents:
+    #   estimate_publisher -> supervisor_node (Rust) -> plan_publisher
+    command: ros2 launch swarm_bringup supervisor_demo.launch.py
