@@ -17,7 +17,7 @@ later full-SITL flight demo AND the adversarial red/blue program (see the seams 
 
 Run (in the estimator venv, with the supervisor built):
     cargo build --release --manifest-path rust/Cargo.toml     # once
-    python swarm_scenario.py
+    python src/planning/swarm_scenario.py
 Then type e.g.  `form a tight line along the north edge`  ·  `status`  ·  `radio 0.35`  ·  `quit`
 
 The planner uses claude-opus-4-8 when ANTHROPIC_API_KEY is set, else a deterministic
@@ -347,7 +347,7 @@ def dump_decisions(path="swarm_scenario_decisions.jsonl"):
             f.write(json.dumps(d) + "\n")
     print(f"wrote {path} ({len(S.decisions)} decisions)")
 
-def render_gif(path="swarm_scenario.gif", max_frames=200):
+def render_gif(path="figures/swarm_scenario.gif", max_frames=200):
     with S.lock:
         frames = list(S.frames)
     if not frames:

@@ -86,7 +86,7 @@ Python's N=12 **max of 56 ms** is a garbage-collection pause landing on a send. 
 
 ```bash
 cd rust && cargo build --release && cd ..
-python layer1_bench.py          # ~2.5 min: python/rust × N=1/N=12, writes layer1_latency.png
+python src/transport/layer1_bench.py          # ~2.5 min: python/rust × N=1/N=12, writes layer1_latency.png
 
 # or drive swarm-link by hand against N SITL instances:
 ./rust/target/release/swarm-link --vehicles 12 --base-port 14551 --port-stride 10

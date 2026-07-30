@@ -14,7 +14,7 @@ Safety net: every new variable gets a LOOSE prior at its predicted position, so 
 whose links all drop out in a frame never causes an indeterminate-system crash.
 
 Needs: pip install cvxpy numpy matplotlib scipy gtsam
-Run:   python day8_isam2.py
+Run:   python src/estimation/day8_isam2.py
 """
 
 import time
@@ -30,17 +30,26 @@ rng = np.random.default_rng(7)
 n = 12
 anchors = np.array([[0, 0], [1, 0], [0, 1], [1, 1]], float)
 R = 0.55
+T, dt = 80, 0.1
 sigma_uwb, p_nlos, nlos_scale, p_outlier, p_dropout = 0.015, 0.15, 0.05, 0.03, 0.10
 sigma_motion = 0.06
 
 
-# ---- use the saved PyBullet trajectory instead of point-mass motion -----------------
-true_traj = np.load("trajectory.npy")
-T = true_traj.shape[0]
-dt = 0.1
+# ---- (same world as Day 7) PID-controlled dynamics + UWB ranging --------------------
+freq  = rng.uniform(0.3, 0.8, (n, 2))
+phase = rng.uniform(0, 2 * np.pi, (n, 2))
+amp   = rng.uniform(0.20, 0.32, (n, 2))
+center = np.array([0.5, 0.5])
+def tgt(t): return center + amp * np.sin(freq * (t * dt) + phase)
 
-# Sync frame count with the saved trajectory and keep the same axes for plotting.
-assert true_traj.shape == (T, n, 2)
+pos, vel = tgt(0).copy(), np.zeros((n, 2))
+Kp, Kd, v_max, a_max = 6.0, 4.0, 0.6, 3.0
+true_traj = np.zeros((T, n, 2))
+for t in range(T):
+    true_traj[t] = pos
+    acc = np.clip(Kp * (tgt(t) - pos) - Kd * vel, -a_max, a_max)
+    vel = np.clip(vel + acc * dt, -v_max, v_max)
+    pos = pos + vel * dt
 
 def uwb(d):
     if rng.random() < p_dropout: return None
@@ -212,72 +221,5 @@ ax[1].set_xlabel("mission length (frames)"); ax[1].set_ylabel("solve time (ms)")
 ax[1].set_title("Why iSAM2 exists: bounded update vs growing batch")
 ax[1].legend(); ax[1].grid(alpha=0.3)
 plt.tight_layout()
-plt.savefig("day8_isam2.png", dpi=130, bbox_inches="tight"); plt.show()
+plt.savefig("figures/day8_isam2.png", dpi=130, bbox_inches="tight"); plt.show()
 print("saved day8_isam2.png")
-
-
-"""
-
-animate_swarm.py  -  the payoff visual: real-flight swarm + your iSAM2 estimate.
-
-Renders from arrays already produced by day8_isam2_traj.py:
-    true_traj  [T,n,2]   real Crazyflie flight (ground truth)
-    online     [T,n,2]   your LIVE iSAM2 estimate at each frame
-    frames     list of (sensor_edges, anchor_edges) per frame  (the UWB sensing graph)
-    anchors    [m,2]
-
-EASIEST USE: paste this block at the very END of day8_isam2_traj.py (all arrays are in
-scope there). Otherwise import/recompute those arrays first.
-
-Output: swarm_real_flight.gif
-Needs:  pillow  (pip install pillow)
-"""
-
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-
-T = true_traj.shape[0]
-n = true_traj.shape[1]
-
-fig, ax = plt.subplots(figsize=(7, 7))
-
-def draw(t):
-    ax.clear()
-    Xt, Et = true_traj[t], online[t]
-    se, ae = frames[t]
-
-    # UWB sensing graph for this frame (flickers as links form / drop out)
-    for (i, j, _) in se:
-        ax.plot([Xt[i, 0], Xt[j, 0]], [Xt[i, 1], Xt[j, 1]],
-                color="gray", lw=0.5, alpha=0.35, zorder=1)
-    for (i, k, _) in ae:
-        ax.plot([Xt[i, 0], anchors[k, 0]], [Xt[i, 1], anchors[k, 1]],
-                color="steelblue", lw=0.4, alpha=0.30, zorder=1)
-
-    # short trails of the true flight
-    for tt in range(max(0, t - 14), t):
-        ax.plot(true_traj[tt:tt + 2, :, 0], true_traj[tt:tt + 2, :, 1],
-                color="green", alpha=0.12, zorder=1)
-
-    # estimate-to-truth error sticks
-    for i in range(n):
-        ax.plot([Xt[i, 0], Et[i, 0]], [Xt[i, 1], Et[i, 1]],
-                color="red", alpha=0.5, lw=1, zorder=2)
-
-    ax.scatter(anchors[:, 0], anchors[:, 1], c="k", marker="^", s=120,
-               zorder=4, label="anchors")
-    ax.scatter(Xt[:, 0], Xt[:, 1], c="green", s=45, zorder=4, label="true (real flight)")
-    ax.scatter(Et[:, 0], Et[:, 1], facecolors="none", edgecolors="red", s=85,
-               zorder=4, label="iSAM2 estimate")
-
-    err = np.sqrt(((Et - Xt) ** 2).sum(1).mean())
-    ax.set_xlim(-0.1, 1.1); ax.set_ylim(-0.1, 1.1); ax.set_aspect("equal")
-    ax.set_title(f"GPS-denied cooperative localization on real flight physics\n"
-                 f"frame {t}/{T}   live RMSE = {err:.3f} m")
-    ax.legend(loc="upper left", fontsize=8); ax.grid(alpha=0.3)
-
-anim = animation.FuncAnimation(fig, draw, frames=T, interval=120)
-anim.save("swarm_real_flight.gif", writer=animation.PillowWriter(fps=10))
-print("saved swarm_real_flight.gif")
-plt.show()

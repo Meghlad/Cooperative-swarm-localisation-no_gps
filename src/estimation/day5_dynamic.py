@@ -11,7 +11,7 @@ prior term  lambda*||x - x_pred||^2  is an "odometry factor" - on a real drone t
 provides exactly this. Same architecture as the flight system.
 
 Needs: pip install cvxpy numpy matplotlib scipy pillow
-Run:   python day5_dynamic.py
+Run:   python src/estimation/day5_dynamic.py
 """
 
 import numpy as np
@@ -121,7 +121,7 @@ plt.plot(rmse_warm, "g-", lw=2, label="predict-correct tracking")
 plt.xlabel("time step"); plt.ylabel("RMSE to truth (m)")
 plt.title("Temporal coherence: prediction carries the swarm through bad frames")
 plt.legend(); plt.grid(alpha=0.3)
-plt.savefig("day5_rmse_over_time.png", dpi=130, bbox_inches="tight"); plt.show()
+plt.savefig("figures/day5_rmse_over_time.png", dpi=130, bbox_inches="tight"); plt.show()
 
 
 # ----------------------------------------------------------------------
@@ -147,7 +147,7 @@ def draw(t):
 
 anim = animation.FuncAnimation(fig, draw, frames=T, interval=120)
 try:
-    anim.save("day5_swarm.gif", writer=animation.PillowWriter(fps=8))
+    anim.save("figures/day5_swarm.gif", writer=animation.PillowWriter(fps=8))
     print("saved day5_swarm.gif and day5_rmse_over_time.png")
 except Exception as e:
     print("GIF save failed (pip install pillow). Static frames still shown.", e)

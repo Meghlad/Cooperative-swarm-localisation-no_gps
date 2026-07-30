@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 # ---------------------------------------------------------------- world (same as Day 8)
-true_traj = np.load("trajectory.npy")
+true_traj = np.load("data/trajectory.npy")
 T, n = true_traj.shape[0], true_traj.shape[1]
 anchors = np.array([[0, 0], [1, 0], [0, 1], [1, 1]], float)
 R = 0.55
@@ -142,6 +142,6 @@ def draw(t):
     ax.grid(alpha=0.3)
 
 anim = animation.FuncAnimation(fig, draw, frames=T, interval=100)
-anim.save("swarm_movie.gif", writer=animation.PillowWriter(fps=12))
+anim.save("figures/swarm_movie.gif", writer=animation.PillowWriter(fps=12))
 print("saved swarm_movie.gif  -  go watch your swarm fly.")
 plt.show()

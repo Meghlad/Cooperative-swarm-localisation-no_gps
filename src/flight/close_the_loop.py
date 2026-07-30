@@ -15,7 +15,7 @@ last estimate several times per frame so the drone never starves. (Production sp
 these into two threads; see the note near the send loop.)
 
 Run in the ESTIMATOR venv (gtsam + pymavlink), with SITL running & external-nav params set:
-    python close_the_loop.py
+    python src/flight/close_the_loop.py
 """
 
 import time
@@ -28,7 +28,7 @@ from pymavlink import mavutil
 # 1. Load the real-flight swarm trajectory + rebuild the Day 8 measurement world.
 #    (Same world as day8_isam2_traj.py. Trimmed here to the essentials.)
 # ----------------------------------------------------------------------
-true_traj = np.load("trajectory.npy")          # from gym-pybullet-drones export
+true_traj = np.load("data/trajectory.npy")          # from gym-pybullet-drones export
 T, n = true_traj.shape[0], true_traj.shape[1]
 anchors = np.array([[0, 0], [1, 0], [0, 1], [1, 1]], float)
 R = 0.55

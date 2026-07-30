@@ -33,8 +33,8 @@ RUN mkdir -p ros2_ws/src && cd ros2_ws/src \
 # --- our sources (repo root is the build context) ---
 COPY rust/           ./rust/
 COPY ros2_ws/src/    ./ros2_ws/src/
-COPY layer3_vlm_planner.py detector.onnx trajectory.npy ./
-COPY layer2_isam2_results.npz ./
+COPY src/planning/layer3_vlm_planner.py data/detector.onnx data/trajectory.npy ./
+COPY data/layer2_isam2_results.npz ./
 # onnxruntime dylib for the perception node's `load-dynamic` ort backend
 RUN pip download onnxruntime -d /tmp/ort --no-deps \
     && cd /tmp/ort && python3 -c "import zipfile,glob; zipfile.ZipFile(glob.glob('*.whl')[0]).extractall('x')" \

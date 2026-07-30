@@ -6,7 +6,7 @@ Builds on Day 1. Three parts:
   PART B  Rigidity check        - is the network a rigid truss or a floppy linkage?
   PART C  Phase diagram         - sweep connectivity x noise, find the cliff where it breaks.
 
-Run:  python day2_rigidity.py
+Run:  python src/estimation/day2_rigidity.py
 """
 
 import numpy as np
@@ -163,7 +163,7 @@ def part_C():
     fig.colorbar(im1, ax=ax[1])
 
     plt.tight_layout()
-    plt.savefig("day2_phase_diagram.png", dpi=130, bbox_inches="tight")
+    plt.savefig("figures/day2_phase_diagram.png", dpi=130, bbox_inches="tight")
     plt.show()
     print("saved day2_phase_diagram.png")
     print("\nNotice: the RMSE 'cliff' on the LEFT lines up with the rigidity boundary -")

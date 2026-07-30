@@ -29,7 +29,7 @@ geometric planner) when no API credential is available, so the pipeline is
 always demonstrable - the offline path is clearly labeled and produces the
 identical Plan schema.
 
-Run:  python layer3_vlm_planner.py "form a tight line along the north edge"
+Run:  python src/planning/layer3_vlm_planner.py "form a tight line along the north edge"
 """
 
 import json
@@ -43,7 +43,7 @@ import numpy as np
 # ----------------------------------------------------------------------
 def load_world(frame=100, condition="r055"):
     """Latest swarm estimate + per-vehicle trust from the Layer-2 iSAM2 run."""
-    d = np.load("layer2_isam2_results.npz")
+    d = np.load("data/layer2_isam2_results.npz")
     pos = d[f"online_{condition}"][frame]        # [n, 2]
     cov = d[f"cov_{condition}"][frame]           # [n] marginal covariance trace
     return pos, cov

@@ -10,7 +10,7 @@ The story in one file:
 
 Setup:  python3 -m venv swarm && source swarm/bin/activate
         pip install cvxpy numpy matplotlib scipy
-Run:    python day1_snl.py
+Run:    python src/estimation/day1_snl.py
 """
 
 import numpy as np
@@ -107,6 +107,6 @@ for i in range(n):
     plt.plot([X_true[i, 0], X_est[i, 0]], [X_true[i, 1], X_est[i, 1]], "r-", alpha=0.4)
 plt.title(f"Biswas-Ye SDP localization  (RMSE={rmse:.3f} m)")
 plt.legend(); plt.axis("equal"); plt.grid(alpha=0.3)
-plt.savefig("day1_localization.png", dpi=130, bbox_inches="tight")
+plt.savefig("figures/day1_localization.png", dpi=130, bbox_inches="tight")
 plt.show()
 print("saved day1_localization.png")

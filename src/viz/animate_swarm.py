@@ -59,6 +59,6 @@ def draw(t):
     ax.legend(loc="upper left", fontsize=8); ax.grid(alpha=0.3)
 
 anim = animation.FuncAnimation(fig, draw, frames=T, interval=120)
-anim.save("swarm_real_flight.gif", writer=animation.PillowWriter(fps=10))
+anim.save("figures/swarm_real_flight.gif", writer=animation.PillowWriter(fps=10))
 print("saved swarm_real_flight.gif")
 plt.show()

@@ -10,7 +10,7 @@ Story:
     true optimum between an SDP lower bound (dreamer) and our map's cost (realist).
 
 Needs: pip install cvxpy numpy matplotlib scipy
-Run:   python day4_robust_certify.py
+Run:   python src/estimation/day4_robust_certify.py
 """
 
 import numpy as np
@@ -183,7 +183,7 @@ for e, (i, j, d) in enumerate(se):
              style, color=col, lw=lw, alpha=0.9)
 plt.title("GNC edge weights (red=rejected, green=trusted)\ndashed = truly spoofed edge")
 plt.axis("equal"); plt.grid(alpha=0.3)
-plt.savefig("day4_outlier_detection.png", dpi=130, bbox_inches="tight"); plt.show()
+plt.savefig("figures/day4_outlier_detection.png", dpi=130, bbox_inches="tight"); plt.show()
 
 
 # ----------------------------------------------------------------------
@@ -211,5 +211,5 @@ plt.plot(fracs, gnc_curve, "g-o", label="robust (GNC-TLS)")
 plt.xlabel("fraction of measurements spoofed"); plt.ylabel("median RMSE to truth (m)")
 plt.title("Robustness: GNC stays flat while least-squares blows up")
 plt.legend(); plt.grid(alpha=0.3)
-plt.savefig("day4_robustness_curve.png", dpi=130, bbox_inches="tight"); plt.show()
+plt.savefig("figures/day4_robustness_curve.png", dpi=130, bbox_inches="tight"); plt.show()
 print("saved day4_outlier_detection.png and day4_robustness_curve.png")

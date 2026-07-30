@@ -11,7 +11,7 @@ The loop, per iteration:
   3. DUAL UPDATE  (no comms)  each node remembers its running disagreement and leans harder
 
 Needs: pip install cvxpy numpy matplotlib scipy
-Run:   python day3_distributed.py
+Run:   python src/estimation/day3_distributed.py
 """
 
 import numpy as np
@@ -150,7 +150,7 @@ for ax, it in zip(axes, snaps):
     ax.set_title(f"iteration {it}"); ax.axis("equal"); ax.grid(alpha=0.3)
 axes[0].legend(loc="upper left")
 plt.suptitle("Neighbors-only ADMM self-organizing into the true map")
-plt.tight_layout(); plt.savefig("day3_storyboard.png", dpi=120, bbox_inches="tight"); plt.show()
+plt.tight_layout(); plt.savefig("figures/day3_storyboard.png", dpi=120, bbox_inches="tight"); plt.show()
 
 # ----------------------------------------------------------------------
 # Convergence curves = the communication-vs-accuracy story
@@ -165,5 +165,5 @@ ax[0].legend(); ax[0].grid(alpha=0.3)
 ax[1].semilogy(disagree_hist, "purple", lw=2)
 ax[1].set_xlabel("ADMM iteration"); ax[1].set_ylabel("avg seam disagreement (log)")
 ax[1].set_title("the seams closing -> consensus"); ax[1].grid(alpha=0.3)
-plt.tight_layout(); plt.savefig("day3_convergence.png", dpi=120, bbox_inches="tight"); plt.show()
+plt.tight_layout(); plt.savefig("figures/day3_convergence.png", dpi=120, bbox_inches="tight"); plt.show()
 print("saved day3_storyboard.png and day3_convergence.png")

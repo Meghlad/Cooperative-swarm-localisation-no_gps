@@ -26,7 +26,7 @@ WHAT LEAVES THIS SCRIPT.
                           + ground-truth target table (EVAL ONLY - the Rust
                           node never reads the truth fields)
   detector.onnx           the fixed-weight conv detector
-Run:  python layer2_make_dataset.py
+Run:  python src/vision/layer2_make_dataset.py
 """
 
 import json
@@ -45,7 +45,7 @@ P_DET = 0.9
 P_CLUTTER = 0.05
 BG_MEAN, BG_STD = 0.07, 0.025
 
-true_traj = np.load("trajectory.npy")
+true_traj = np.load("data/trajectory.npy")
 T, n = true_traj.shape[0], true_traj.shape[1]
 rng = np.random.default_rng(21)
 
@@ -144,12 +144,12 @@ model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 17)],
                           producer_name="coop-swarm-layer2")
 model.ir_version = 8
 onnx.checker.check_model(model)
-onnx.save(model, "detector.onnx")
+onnx.save(model, "data/detector.onnx")
 print("saved detector.onnx (fixed-weight DoG conv, opset 17)")
 
 # ---- sanity: run it in onnxruntime on one frame, check peaks near truth -----
 import onnxruntime as ort_py
-sess = ort_py.InferenceSession("detector.onnx")
+sess = ort_py.InferenceSession("data/detector.onnx")
 img = np.asarray(Image.open(out / "t010_d00.png"), np.float32)[None, None] / 255
 resp = sess.run(None, {"image": img})[0][0, 0]
 with open(out / "meta.jsonl") as f:

@@ -143,15 +143,15 @@ The fix is temporal — **identity is earned, not claimed**:
 
 ```bash
 # science
-python layer2_bearing_phase_diagram.py     # ~2 min: rescue demo + R×B sweep
-python layer2_isam2_bearing.py             # ~1 min: live iSAM2, 2 radios × 2 suites
+python src/vision/layer2_bearing_phase_diagram.py     # ~2 min: rescue demo + R×B sweep
+python src/vision/layer2_isam2_bearing.py             # ~1 min: live iSAM2, 2 radios × 2 suites
 
 # perception pipeline
-python layer2_make_dataset.py              # renders 1,440 frames + detector.onnx
+python src/vision/layer2_make_dataset.py              # renders 1,440 frames + detector.onnx
 cd rust && cargo build --release && cd ..
 ORT_DYLIB_PATH=$PWD/.venv/lib/python3.12/site-packages/onnxruntime/capi/libonnxruntime.1.27.0.dylib \
-  ./rust/target/release/swarm-perception --frames frames --model detector.onnx --out bearings.jsonl
-python layer2_perception_closeloop.py      # association + 4-way iSAM2 comparison
+  ./rust/target/release/swarm-perception --frames frames --model data/detector.onnx --out bearings.jsonl
+python src/vision/layer2_perception_closeloop.py      # association + 4-way iSAM2 comparison
 ```
 
 ## 5. What to say in the room

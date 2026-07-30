@@ -13,7 +13,7 @@ Both implementations share the same architecture (news sent immediately,
 20 Hz heartbeat re-sends, per-vehicle senders, latest-snapshot handoff), so
 the histogram difference is the runtime: GC/GIL/thread-wakeup vs tokio.
 
-Run:  python layer1_bench.py            (~2.5 min: 4 configs x 35 s)
+Run:  python src/transport/layer1_bench.py            (~2.5 min: 4 configs x 35 s)
 """
 
 import json
@@ -25,7 +25,8 @@ import time
 
 import numpy as np
 
-ROOT = pathlib.Path(__file__).parent
+HERE = pathlib.Path(__file__).resolve().parent          # src/transport/
+ROOT = HERE.parents[1]                                  # repo root
 RUST_BIN = ROOT / "rust/target/release/swarm-link"
 PY = sys.executable
 INGEST = 47001
@@ -33,7 +34,7 @@ FRAMES = 300           # 30 s at 10 Hz per config
 RATE_HZ = 10.0
 
 # real estimator output as the replay source
-est = np.load(ROOT / "layer2_isam2_results.npz")["online_r055"]   # [120, 12, 2]
+est = np.load(ROOT / "data/layer2_isam2_results.npz")["online_r055"]   # [120, 12, 2]
 
 
 def run_config(impl, n_vehicles):
@@ -42,7 +43,7 @@ def run_config(impl, n_vehicles):
         cmd = [str(RUST_BIN), "--vehicles", str(n_vehicles),
                "--ingest-port", str(INGEST), "--csv", str(csv)]
     else:
-        cmd = [PY, str(ROOT / "layer1_python_sender.py"),
+        cmd = [PY, str(HERE / "layer1_python_sender.py"),
                "--vehicles", str(n_vehicles),
                "--ingest-port", str(INGEST), "--csv", str(csv)]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -126,5 +127,5 @@ if __name__ == "__main__":
     ax[1].grid(alpha=0.3, axis="y", which="both"); ax[1].legend()
     fig.suptitle("swarm-link (Rust/tokio) vs identical-architecture Python sender")
     plt.tight_layout()
-    plt.savefig("layer1_latency.png", dpi=130, bbox_inches="tight")
+    plt.savefig("figures/layer1_latency.png", dpi=130, bbox_inches="tight")
     print("saved layer1_latency.png")

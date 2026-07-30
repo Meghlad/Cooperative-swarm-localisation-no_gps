@@ -13,7 +13,7 @@ not design-vs-design:
     close_the_loop.py wire format
   - estimate-to-wire latency recorded on the FIRST transmission of each seq
 
-Run:  python layer1_python_sender.py --vehicles 12 --csv py_latencies.csv
+Run:  python src/transport/layer1_python_sender.py --vehicles 12 --csv py_latencies.csv
 Feed: {"seq":1,"pos":[[x,y],...]}\n UDP datagrams to --ingest-port, then {"end":true}
 """
 

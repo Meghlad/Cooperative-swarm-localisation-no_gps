@@ -22,7 +22,7 @@ Also exported per frame: each drone's MARGINAL COVARIANCE trace. That number is
 the estimator saying "how much do I trust drone i right now" - it's the signal
 Layer 3's safety supervisor gates plans on.
 
-Run:  python layer2_isam2_bearing.py     (~2-3 min: 4 full iSAM2 runs)
+Run:  python src/vision/layer2_isam2_bearing.py     (~2-3 min: 4 full iSAM2 runs)
 """
 
 import time
@@ -34,7 +34,7 @@ from gtsam.symbol_shorthand import X
 # ----------------------------------------------------------------------
 # World: identical to Day 8, plus the camera
 # ----------------------------------------------------------------------
-true_traj = np.load("trajectory.npy")
+true_traj = np.load("data/trajectory.npy")
 T, n = true_traj.shape[0], true_traj.shape[1]
 anchors = np.array([[0, 0], [1, 0], [0, 1], [1, 1]], float)
 sigma_uwb, p_nlos, nlos_scale, p_outlier, p_dropout = 0.015, 0.15, 0.05, 0.03, 0.10
@@ -237,10 +237,10 @@ for col, R in enumerate((0.55, 0.35)):
 fig.suptitle("Bearing factors in the live iSAM2 estimator - accuracy AND confidence\n"
              "(marginal sigma is the trust signal the Layer-3 supervisor gates on)")
 plt.tight_layout()
-plt.savefig("layer2_isam2_bearing.png", dpi=130, bbox_inches="tight")
+plt.savefig("figures/layer2_isam2_bearing.png", dpi=130, bbox_inches="tight")
 print("\nsaved layer2_isam2_bearing.png")
 
-np.savez("layer2_isam2_results.npz",
+np.savez("data/layer2_isam2_results.npz",
          online_r055=results[(0.55, True)][0],  cov_r055=results[(0.55, True)][3],
          online_r035=results[(0.35, True)][0],  cov_r035=results[(0.35, True)][3],
          online_r055_ro=results[(0.55, False)][0], cov_r055_ro=results[(0.55, False)][3],

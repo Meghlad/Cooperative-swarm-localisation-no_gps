@@ -25,23 +25,23 @@ Built in the order they deepen the work — not the order they're numbered.
 
 ```bash
 # --- estimator venv (Python) ---
-python day8_isam2_traj.py                 # the estimator the layers build on
+python src/estimation/day8_isam2_traj.py                 # the estimator the layers build on
 
 # --- Layer 2 science + perception pipeline ---
-python layer2_bearing_phase_diagram.py    # the deliverable plot
-python layer2_isam2_bearing.py            # bearings in the live estimator
-python layer2_make_dataset.py             # 1440 camera frames + detector.onnx
+python src/vision/layer2_bearing_phase_diagram.py    # the deliverable plot
+python src/vision/layer2_isam2_bearing.py            # bearings in the live estimator
+python src/vision/layer2_make_dataset.py             # 1440 camera frames + detector.onnx
 cargo build --release --manifest-path rust/Cargo.toml
 ORT_DYLIB_PATH=$PWD/.venv/lib/python3.12/site-packages/onnxruntime/capi/libonnxruntime.1.27.0.dylib \
-  ./rust/target/release/swarm-perception --frames frames --model detector.onnx --out bearings.jsonl
-python layer2_perception_closeloop.py
+  ./rust/target/release/swarm-perception --frames frames --model data/detector.onnx --out bearings.jsonl
+python src/vision/layer2_perception_closeloop.py
 
 # --- Layer 1 benchmark ---
-python layer1_bench.py                    # writes layer1_latency.png
+python src/transport/layer1_bench.py                    # writes layer1_latency.png
 
 # --- Layer 3 planner + supervisor ---
 cargo test -p swarm-supervisor --release --manifest-path rust/Cargo.toml   # 11 tests
-python layer3_vlm_planner.py "form a tight line along the north edge"
+python src/planning/layer3_vlm_planner.py "form a tight line along the north edge"
 
 # --- ROS 2 (needs Docker or a ROS 2 Jazzy host) ---
 docker build -f ros2_ws/Dockerfile -t coop-swarm-ros .

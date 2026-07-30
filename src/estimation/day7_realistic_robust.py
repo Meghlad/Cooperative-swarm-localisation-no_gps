@@ -18,7 +18,7 @@ The gym-pybullet-drones / PX4-SITL swap plugs in at the SAME place (it only repl
 the block that produces `true_traj`); the estimator below is unchanged.
 
 Needs: pip install cvxpy numpy matplotlib scipy gtsam
-Run:   python day7_realistic_robust.py
+Run:   python src/estimation/day7_realistic_robust.py
 """
 
 import numpy as np
@@ -230,5 +230,5 @@ ax[1].scatter(robust_traj[t, :, 0], robust_traj[t, :, 1], marker="x", c="blue", 
 ax[1].set_title(f"worst plain frame t={worst}"); ax[1].axis("equal")
 ax[1].legend(); ax[1].grid(alpha=0.3)
 plt.tight_layout()
-plt.savefig("day7_robust_smoother.png", dpi=130, bbox_inches="tight"); plt.show()
+plt.savefig("figures/day7_robust_smoother.png", dpi=130, bbox_inches="tight"); plt.show()
 print("saved day7_robust_smoother.png")

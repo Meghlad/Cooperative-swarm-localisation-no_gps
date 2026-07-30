@@ -14,7 +14,7 @@ We use gtsam.CustomFactor for all three so the code doesn't depend on version-sp
 built-in factor names - and so you can see exactly what a factor IS: an error + Jacobian.
 
 Needs: pip install cvxpy numpy matplotlib scipy gtsam
-Run:   python day6_gtsam_smoother.py
+Run:   python src/estimation/day6_gtsam_smoother.py
 """
 
 import numpy as np
@@ -188,5 +188,5 @@ ax[1].scatter(smoothed[t, :, 0], smoothed[t, :, 1], marker="x", c="blue", s=60, 
 ax[1].set_title(f"the botched frame t={worst}: causal vs smoother"); ax[1].axis("equal")
 ax[1].legend(); ax[1].grid(alpha=0.3)
 plt.tight_layout()
-plt.savefig("day6_smoother_vs_causal.png", dpi=130, bbox_inches="tight"); plt.show()
+plt.savefig("figures/day6_smoother_vs_causal.png", dpi=130, bbox_inches="tight"); plt.show()
 print("saved day6_smoother_vs_causal.png")

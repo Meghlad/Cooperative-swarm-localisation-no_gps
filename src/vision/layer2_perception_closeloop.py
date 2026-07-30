@@ -23,7 +23,7 @@ Runs compared on IDENTICAL range measurements:
 Also scores the detector itself against the withheld ground truth:
 recall / precision / bearing RMS error / association purity.
 
-Run:  python layer2_perception_closeloop.py     (after swarm-perception)
+Run:  python src/vision/layer2_perception_closeloop.py     (after swarm-perception)
 """
 
 import json
@@ -33,7 +33,7 @@ import gtsam
 from gtsam.symbol_shorthand import X
 
 # ---- world: identical to layer2_isam2_bearing.py, degraded radio ------------
-true_traj = np.load("trajectory.npy")
+true_traj = np.load("data/trajectory.npy")
 T, n = true_traj.shape[0], true_traj.shape[1]
 anchors = np.array([[0, 0], [1, 0], [0, 1], [1, 1]], float)
 R_DD = 0.35              # degraded inter-drone radio
@@ -468,5 +468,5 @@ if __name__ == "__main__":
     fig.suptitle("The full perception loop: camera pixels -> ONNX (Rust) -> "
                  "data association -> iSAM2 factors")
     plt.tight_layout()
-    plt.savefig("layer2_perception_closeloop.png", dpi=130, bbox_inches="tight")
+    plt.savefig("figures/layer2_perception_closeloop.png", dpi=130, bbox_inches="tight")
     print("\nsaved layer2_perception_closeloop.png")

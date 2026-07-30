@@ -42,8 +42,13 @@ gym-pybullet-drones/
 ros2_ws/src/*/Cargo.lock
 
 # Docker build inputs: the *.npy/*.npz/detector.onnx rules above ignore the
-# generated dataset, but the Dockerfile COPYs these three specific files, so they
-# must be tracked for a fresh clone to build the image (docker-compose.yml). Tiny.
-!detector.onnx
-!trajectory.npy
-!layer2_isam2_results.npz
+# generated dataset, but the Dockerfile COPYs these three specific files (now under
+# data/), so they must be tracked for a fresh clone to build the image. Tiny.
+!data/detector.onnx
+!data/trajectory.npy
+!data/layer2_isam2_results.npz
+
+# Transient run outputs from the interactive scenario / benchmarks
+swarm_scenario.gif
+swarm_scenario_decisions.jsonl
+python_sender_latencies.csv

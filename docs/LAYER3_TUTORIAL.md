@@ -75,7 +75,7 @@ test rejection_is_total ... ok              # one bad assignment poisons the who
 ### End-to-end, on real estimator data
 
 ```
-$ python layer3_vlm_planner.py "form a tight circle in the center"
+$ python src/planning/layer3_vlm_planner.py "form a tight circle in the center"
 --- PLAN (source: offline-geometric) ---   # or claude-opus-4-8 with a credential
 { "assignments": [ {"vehicle":0,"waypoint_ne":[0.8,0.5]}, ... ] }
 --- SUPERVISOR VERDICT (exit 0) ---
@@ -107,8 +107,8 @@ The covariance gate is the through-line of the whole project: it's only meaningf
 cargo build --release --manifest-path rust/Cargo.toml
 cargo test -p swarm-supervisor --release        # 11 tests, incl. hillside
 
-python layer3_vlm_planner.py "form a line along the north edge"
-python layer3_vlm_planner.py "spread into a grid"
+python src/planning/layer3_vlm_planner.py "form a line along the north edge"
+python src/planning/layer3_vlm_planner.py "spread into a grid"
 # with a credential (ANTHROPIC_API_KEY or `ant auth login`), the same command
 # routes through claude-opus-4-8 with constrained decoding instead of the offline planner
 ```

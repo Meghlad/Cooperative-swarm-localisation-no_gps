@@ -26,7 +26,7 @@ nothing about "how far". This script quantifies the marriage:
           graph well-conditioned?" - with conditioning MEASURED as the smallest
           eigenvalue of the stiffness matrix R^T R, not asserted.
 
-Run:  python layer2_bearing_phase_diagram.py     (sweep takes ~2 min)
+Run:  python src/vision/layer2_bearing_phase_diagram.py     (sweep takes ~2 min)
 """
 
 import numpy as np
@@ -275,7 +275,7 @@ def rescue_demo(R_marginal=0.35, B=2, max_seed=40):
         ax[a].axis("equal"); ax[a].grid(alpha=0.3); ax[a].legend(loc="upper right")
     fig.suptitle("A floppy range graph, rescued by bearings (purple arrows = detections)")
     plt.tight_layout()
-    plt.savefig("layer2_bearing_rescue.png", dpi=130, bbox_inches="tight")
+    plt.savefig("figures/layer2_bearing_rescue.png", dpi=130, bbox_inches="tight")
     print("saved layer2_bearing_rescue.png")
 
 
@@ -360,7 +360,7 @@ def sweep():
                   f"range-only rigid only {100*rigid_grid[0, marg]:.0f}% of the time)")
 
     plt.tight_layout()
-    plt.savefig("layer2_bearing_phase_diagram.png", dpi=130, bbox_inches="tight")
+    plt.savefig("figures/layer2_bearing_phase_diagram.png", dpi=130, bbox_inches="tight")
     print("saved layer2_bearing_phase_diagram.png")
 
     # ---- the quotable numbers -------------------------------------------------
